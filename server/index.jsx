@@ -4,7 +4,7 @@ import fs from 'fs-extra';
 import webpack from 'webpack';
 import { argv } from 'optimist';             
 import { get } from 'request-promise';  // an alternative to axios
-import { questions, question } from '../data/api-real-url';
+import { questions, question, questions_by_tag } from '../data/api-real-url';
 import { delay } from 'redux-saga';
 import getStore from '../src/getStore';
 import { renderToString } from 'react-dom/server';
@@ -45,6 +45,16 @@ function * getQuestions() {
     return JSON.parse(data);
 }
 
+function * getQuestionsByTag(tag) {
+    let data;
+    if (useLivedata) {
+        data = yield get(questions_by_tag(tag), {gzip: true});
+    } else {
+        // tbd
+    }
+    return JSON.parse(data);
+}
+
  const getQuestionsAsync = async () => {
     let data;
     if (useLivedata) {
@@ -68,8 +78,13 @@ app.get('/api/questions', function * (req, res) {
     yield delay(150);
     res.json(data);
 });
-app.get('/api/questions/:id', function * (req, res) {
+app.get('/api/question/:id', function * (req, res) {
     const data = yield getQuestion(req.params.id);
+    yield delay(150);
+    res.json(data);
+});
+app.get('/api/questions/:tag', function * (req, res) {
+    const data = yield getQuestionsByTag(req.params.tag);
     yield delay(150);
     res.json(data);
 });
@@ -87,7 +102,7 @@ if (process.env.NODE_ENV === 'development') {
     app.use(express.static(path.resolve(__dirname, '../dist')));
 }
 
-app.get(['/', '/questions/:id'], function * (req, res) {
+app.get(['/', '/questions/:id', '/tags/:tag'], function * (req, res) {
     let index = yield fs.readFile('./public/index.html', "utf-8");
 
     // server side render first
@@ -105,6 +120,11 @@ app.get(['/', '/questions/:id'], function * (req, res) {
         const response = yield getQuestion(question_id);
         const questionDetails = response.items[0];
         initialState.questions = [{...questionDetails, question_id}]
+    } else if (req.params.tag) { 
+        const tag = req.params.tag;
+        const response = yield getQuestionsByTag(tag);
+        const questions = response.items;
+        initialState.questions = questions;
     } else {
         const questions = yield getQuestions();
         initialState.questions = questions.items;
