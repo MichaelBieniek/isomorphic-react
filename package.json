@@ -4,9 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "cross-env NODE_ENV=development babel-node server --useLivedata=true",
+    "start": "cross-env NODE_ENV=development babel-node server --useLivedata=true --useServerRender=true",
     "webpack": "webpack --config webpack.config.dev.babel.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "cross-env webpack --config ./webpack.config.prod.babel.js",
+    "start-prod": "npm run build && cross-env NODE_ENV=production babel-node server --useLivedata=true --useServerRender=true"
   },
   "repository": {
     "type": "git",
@@ -27,12 +29,16 @@
     "express": "^4.16.3",
     "express-yields": "^1.1.2",
     "fs-extra": "^7.0.0",
+    "history": "^4.7.2",
     "isomorphic-fetch": "^2.2.1",
     "lodash": "^4.17.11",
     "optimist": "^0.6.1",
     "react": "^16.5.2",
     "react-dom": "^16.5.2",
+    "react-markdown": "^4.0.3",
     "react-redux": "^5.0.7",
+    "react-router-dom": "^4.3.1",
+    "react-router-redux": "^5.0.0-alpha.9",
     "redux": "^4.0.0",
     "redux-logger": "^3.0.6",
     "redux-saga": "^0.16.2",

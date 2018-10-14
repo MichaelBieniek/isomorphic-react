@@ -6,11 +6,20 @@ import { argv } from 'optimist';
 import { get } from 'request-promise';  // an alternative to axios
 import { questions, question } from '../data/api-real-url';
 import { delay } from 'redux-saga';
+import getStore from '../src/getStore';
+import { renderToString } from 'react-dom/server';
+import { Provider } from 'react-redux';
+import React from 'react';
+import App from '../src/App';
+import { ConnectedRouter } from 'react-router-redux';
+import createHistory from 'history/createMemoryHistory';
+import path from 'path';
 
 const port = process.env.PORT || 3000;
 const app = express();
 
 const useLivedata = argv.useLivedata === 'true';
+const useServerRender = argv.useServerRender === 'true';
 
 function * getQuestion(question_id) {
     let data;
@@ -74,10 +83,50 @@ if (process.env.NODE_ENV === 'development') {
     }));
 
     app.use(require('webpack-hot-middleware')(compiler));
+} else {
+    app.use(express.static(path.resolve(__dirname, '../dist')));
 }
 
-app.get(['/'], function * (req, res) {
+app.get(['/', '/questions/:id'], function * (req, res) {
     let index = yield fs.readFile('./public/index.html', "utf-8");
+
+    // server side render first
+    // call api to get data and create initial store
+    const initialState = {
+        questions: []
+    };
+    const history = createHistory({
+        initialEntries: [req.path],
+
+    })
+    // only works with 2 routes
+    if (req.params.id) {
+        const question_id = req.params.id;
+        const response = yield getQuestion(question_id);
+        const questionDetails = response.items[0];
+        initialState.questions = [{...questionDetails, question_id}]
+    } else {
+        const questions = yield getQuestions();
+        initialState.questions = questions.items;
+    }
+
+    
+    const store = getStore(history, initialState);
+
+    // render to string and replace placeholder
+    if (useServerRender) {
+        const appRendered = renderToString(
+            <Provider store={store}>
+                <ConnectedRouter history={history}>
+                    <App />
+                </ConnectedRouter>
+            </Provider>
+        );
+        index = index.replace(`<%= preloadedApplication %>`, appRendered);
+    } else {
+        index = index.replace(`<%= preloadedApplication %>`, `Please wait while we load the application.`);
+    }
+
     res.send(index);
 });
 
